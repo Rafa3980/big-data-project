@@ -1,4 +1,4 @@
-# ------------------------------- 
+# -------------------------------
 # Importações
 # -------------------------------
 import hashlib
@@ -19,7 +19,6 @@ try:
     st.sidebar.success("Conexão com Neon OK!")
 except Exception as e:
     st.sidebar.error(f"Erro ao conectar: {e}")
-    st.stop()
 
 # -------------------------------
 # Sistema de login
@@ -42,13 +41,11 @@ def _login(email: str):
     st.session_state["user"] = email
     st.session_state["display_name"] = email.split("@")[0].title()
     st.session_state.authenticated = True
-    st.rerun()
 
 def _logout():
     for k in ("auth", "user", "display_name"):
         st.session_state.pop(k, None)
     st.session_state.authenticated = False 
-    st.rerun()
 
 def _render_login():
     st.markdown(
@@ -71,6 +68,7 @@ def _render_login():
         if email and password and USERS.get(email.strip().lower()) == _sha256(password):
             _login(email.strip().lower())
             st.success("Login realizado!")
+            st.experimental_rerun()
         else:
             st.error("Credenciais inválidas. Verifique email e senha.")
 
@@ -84,31 +82,38 @@ if not _is_authed():
 # -------------------------------
 # Interface principal após login
 # -------------------------------
-c1, c2 = st.columns([1, 6])
-with c1:
-    if st.button("Sair"):
-        _logout()
+st.title(f"Gerenciamento de Clientes - {st.session_state['display_name']}")
+
+# Botão de logout
+if st.button("Sair"):
+    _logout()
+    st.success("Sessão encerrada.")
+    st.experimental_rerun()
 
 # -------------------------------
-# Carregar dados do Neon
+# Buscar dados do Neon
 # -------------------------------
 try:
-    query = """
-        SELECT 
-            id_cliente, nome_completo, cpf, endereco, cep, complemento, numero, email, criado_em
-        FROM clientes
-        ORDER BY id_cliente DESC;
-    """
-    df_clientes = pd.read_sql_query(query, conn)
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT id_cliente, cliente_ativo, criado_em, cpf, cep, endereco, complemento, numero, nome_completo, email 
+            FROM clientes
+            ORDER BY id_cliente DESC;
+        """)
+        clientes = cur.fetchall()
 except Exception as e:
-    st.error(f"Erro ao carregar dados: {e}")
-    df_clientes = pd.DataFrame()  # cria um DataFrame vazio se der erro
+    st.error(f"Erro ao buscar clientes: {e}")
+    clientes = []
 
 # -------------------------------
-# Mostrar dados na tela
+# Exibir tabela de clientes
 # -------------------------------
-st.subheader("Lista de clientes")
-if not df_clientes.empty:
-    st.dataframe(df_clientes)
+if clientes:
+    df = pd.DataFrame(clientes, columns=[
+        "ID", "Ativo", "Criado em", "CPF", "CEP", "Endereço", 
+        "Complemento", "Número", "Nome completo", "Email"
+    ])
+    st.dataframe(df, use_container_width=True)
 else:
-    st.info("Nenhum cliente encontrado no banco de dados.")
+    st.write("Nenhum cliente encontrado no banco Neon.")
+
