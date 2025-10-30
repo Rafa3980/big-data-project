@@ -1,9 +1,28 @@
-# streamlit_app.py
+# -------------------------------
+# Importações
+# -------------------------------
 import hashlib
 import streamlit as st
+import psycopg2
 
+# -------------------------------
+# Configuração do Streamlit
+# -------------------------------
+st.set_page_config(page_title="Gerenciamento de clientes", page_icon="🎫", layout="centered")
+
+# -------------------------------
+# Teste de conexão com Neon
+# -------------------------------
+try:
+    conn = psycopg2.connect(st.secrets["neon_db_url"])
+    st.sidebar.success("Conexão com Neon OK!")
+except Exception as e:
+    st.sidebar.error(f"Erro ao conectar: {e}")
+
+# -------------------------------
+# Sistema de login
+# -------------------------------
 USERS = {
-    # senha = "123456"
     "admin@exemplo.com": hashlib.sha256("123456".encode()).hexdigest(),
 }
 
@@ -21,7 +40,7 @@ def _login(email: str):
     st.session_state["user"] = email
     st.session_state["display_name"] = email.split("@")[0].title()
     st.session_state.authenticated = True
-    st.switch_page("pages/cliente.py")
+    st.switch_page("pages/cliente.py")  # muda para a página do cliente
 
 def _logout():
     for k in ("auth", "user", "display_name"):
@@ -29,7 +48,6 @@ def _logout():
     st.session_state.authenticated = False 
 
 def _render_login():
-    st.set_page_config(page_title="Login", page_icon="🔐", layout="centered")
     st.markdown(
         """
         <div style="max-width:420px;margin:8vh auto 0 auto;padding:2rem;border-radius:16px;
@@ -54,15 +72,16 @@ def _render_login():
         else:
             st.error("Credenciais inválidas. Verifique email e senha.")
 
-
+# -------------------------------
+# Mostrar login se não autenticado
+# -------------------------------
 if not _is_authed():
     _render_login()
     st.stop()
 
-
-st.set_page_config(page_title="Gerenciamento de clientes", page_icon="🎫", layout="centered")
-
-
+# -------------------------------
+# Interface principal após login
+# -------------------------------
 c1, c2 = st.columns([1, 6])
 with c1:
     if st.button("Sair"):
