@@ -11,6 +11,13 @@ import altair as alt
 st.set_page_config(page_title="Gerenciador de clientes", page_icon="🎫")
 
 # -------------------------------
+# Limpa dados antigos do session_state
+# -------------------------------
+for key in ["df"]:
+    if key in st.session_state:
+        del st.session_state[key]
+
+# -------------------------------
 # Verifica se o usuário está logado
 # -------------------------------
 if "authenticated" not in st.session_state or not st.session_state.authenticated:
@@ -28,20 +35,16 @@ except Exception as e:
     st.stop()
 
 # -------------------------------
-# Função para carregar dados do Neon
+# Consulta os dados de clientes do Neon
 # -------------------------------
-def carregar_dados():
-    query = """
-        SELECT 
-            id_cliente, cliente_ativo, nome_completo, cpf, cep, endereco, complemento, numero, email, criado_em
-        FROM clientes
-        ORDER BY id_cliente DESC
-    """
-    df = pd.read_sql(query, conn)
-    return df
-
-# Sempre atualizar os dados ao abrir a página
-st.session_state.df = carregar_dados()
+query = """
+    SELECT 
+        id_cliente, cliente_ativo, nome_completo, cpf, cep, endereco, complemento, numero, email, criado_em
+    FROM clientes
+    ORDER BY id_cliente DESC
+"""
+df = pd.read_sql(query, conn)
+st.session_state.df = df.copy()
 
 # -------------------------------
 # Título e descrição
@@ -62,13 +65,6 @@ with c1:
             st.session_state.pop(k, None)
         st.session_state.authenticated = False
         st.experimental_rerun()
-
-# -------------------------------
-# Botão para atualizar manualmente os dados
-# -------------------------------
-if st.button("Atualizar dados do Neon"):
-    st.session_state.df = carregar_dados()
-    st.success("Dados atualizados com sucesso!")
 
 # -------------------------------
 # Adicionar novo cliente
@@ -99,8 +95,9 @@ if submitted:
         new_id = cursor.fetchone()[0]
         st.success(f"Cliente cadastrado com sucesso! ID: {new_id}")
 
-        # Atualiza o DataFrame após cadastro
-        st.session_state.df = carregar_dados()
+        # Atualiza o DataFrame do Neon
+        df = pd.read_sql(query, conn)
+        st.session_state.df = df.copy()
     except Exception as e:
         st.error(f"Erro ao cadastrar cliente: {e}")
 
@@ -112,13 +109,14 @@ st.data_editor(
     st.session_state.df,
     use_container_width=True,
     hide_index=True,
-    disabled=["id_cliente", "criado_em"]  # impede edição de ID e data
+    disabled=[ "id_cliente", "criado_em" ]
 )
 
 # -------------------------------
 # Gráficos e estatísticas
 # -------------------------------
 st.header("Análise de dados e gráficos")
+
 st.write("* Quantidade de clientes por bairro:")
 chart_bairro = (
     alt.Chart(st.session_state.df)
