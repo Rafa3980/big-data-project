@@ -28,16 +28,20 @@ except Exception as e:
     st.stop()
 
 # -------------------------------
-# Consulta os dados de clientes do Neon
+# Função para carregar dados do Neon
 # -------------------------------
-query = """
-    SELECT 
-        id_cliente, cliente_ativo, nome_completo, cpf, cep, endereco, complemento, numero, email, criado_em
-    FROM clientes
-    ORDER BY id_cliente DESC
-"""
-df = pd.read_sql(query, conn)
-st.session_state.df = df
+def carregar_dados():
+    query = """
+        SELECT 
+            id_cliente, cliente_ativo, nome_completo, cpf, cep, endereco, complemento, numero, email, criado_em
+        FROM clientes
+        ORDER BY id_cliente DESC
+    """
+    df = pd.read_sql(query, conn)
+    return df
+
+# Sempre atualizar os dados ao abrir a página
+st.session_state.df = carregar_dados()
 
 # -------------------------------
 # Título e descrição
@@ -58,6 +62,13 @@ with c1:
             st.session_state.pop(k, None)
         st.session_state.authenticated = False
         st.experimental_rerun()
+
+# -------------------------------
+# Botão para atualizar manualmente os dados
+# -------------------------------
+if st.button("Atualizar dados do Neon"):
+    st.session_state.df = carregar_dados()
+    st.success("Dados atualizados com sucesso!")
 
 # -------------------------------
 # Adicionar novo cliente
@@ -88,9 +99,8 @@ if submitted:
         new_id = cursor.fetchone()[0]
         st.success(f"Cliente cadastrado com sucesso! ID: {new_id}")
 
-        # Atualiza o DataFrame
-        df = pd.read_sql(query, conn)
-        st.session_state.df = df
+        # Atualiza o DataFrame após cadastro
+        st.session_state.df = carregar_dados()
     except Exception as e:
         st.error(f"Erro ao cadastrar cliente: {e}")
 
@@ -102,7 +112,7 @@ st.data_editor(
     st.session_state.df,
     use_container_width=True,
     hide_index=True,
-    disabled=[ "id_cliente", "criado_em" ]  # impede edição de ID e data
+    disabled=["id_cliente", "criado_em"]  # impede edição de ID e data
 )
 
 # -------------------------------
